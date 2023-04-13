@@ -115,14 +115,14 @@ class MipNeRFSystem(LightningModule):
                 psnrs.append(calc_psnr(rgb, rgbs[..., :3]))
             psnr_corse, psnr_fine = psnrs
 
-        if self.global_step % 1000 == 0:
-            batch_to_render = batch[30:30+1, ...]
-            _, rgbs = batch_to_render
-            rgb_gt = rgbs[..., :3]
-            coarse_rgb, fine_rgb, val_mask = self.render_image(batch_to_render)
-            stack = stack_rgb(rgb_gt, coarse_rgb, fine_rgb)
-            self.logger.experiment.add_images('val/GT_coarse_fine',
-                                              stack, self.global_step)
+        # if self.global_step % 1000 == 0:
+        #     batch_to_render = batch[30:30+1, ...]
+        #     _, rgbs = batch_to_render
+        #     rgb_gt = rgbs[..., :3]
+        #     coarse_rgb, fine_rgb, val_mask = self.render_image(batch_to_render)
+        #     stack = stack_rgb(rgb_gt, coarse_rgb, fine_rgb)
+        #     self.logger.experiment.add_images('val/GT_coarse_fine',
+        #                                       stack, self.global_step)
         self.log('lr', self.optimizers().optimizer.param_groups[0]['lr'])
         self.log('train/loss', loss)
         self.log('train/psnr', psnr_fine, prog_bar=True)

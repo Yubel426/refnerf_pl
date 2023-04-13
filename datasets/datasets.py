@@ -201,7 +201,8 @@ class Blender(BaseDataset):
             if self.white_bkgd:
                 image = image[..., :3] * image[..., -1:] + (1. - image[..., -1:])
             images.append(image[..., :3])
-
+            if i % 10  == 0:
+                print('Loading image {} / {}'.format(i, len(meta['frames'])))
         self.images = images
         del images
         self.h, self.w = self.images[0].shape[:-1]
@@ -210,9 +211,11 @@ class Blender(BaseDataset):
         camera_angle_x = float(meta['camera_angle_x'])
         self.focal = .5 * self.w / np.tan(.5 * camera_angle_x)
         self.n_examples = len(self.images)
+        print('Loaded {} images'.format(self.n_examples))
 
     def _generate_rays(self):
         """Generating rays for all images."""
+        print('Generating rays for all images')
         x, y = np.meshgrid(  # pylint: disable=unbalanced-tuple-unpacking
             np.arange(self.w, dtype=np.float32),  # X-Axis (columns)
             np.arange(self.h, dtype=np.float32),  # Y-Axis (rows)
@@ -221,17 +224,18 @@ class Blender(BaseDataset):
             [(x - self.w * 0.5 + 0.5) / self.focal,
              -(y - self.h * 0.5 + 0.5) / self.focal, -np.ones_like(x)],
             axis=-1)
-
+        print('Done generating camera_dirs')
         directions = [(camera_dirs @ c2w[:3, :3].T).copy() for c2w in self.camtoworlds]
-
+        print('Done generating directions')
         origins = [
             np.broadcast_to(c2w[:3, -1], v.shape).copy()
             for v, c2w in zip(directions, self.camtoworlds)
         ]
+        print('Done generating origins')
         viewdirs = [
             v / np.linalg.norm(v, axis=-1, keepdims=True) for v in directions
         ]
-
+        print('Done generating viewdirs')
         def broadcast_scalar_attribute(x):
             return [
                 x * np.ones_like(origins[i][..., :1])
@@ -239,6 +243,7 @@ class Blender(BaseDataset):
             ]
 
         lossmults = broadcast_scalar_attribute(1).copy()
+        print('Done generating lossmults')
         nears = broadcast_scalar_attribute(self.near).copy()
         fars = broadcast_scalar_attribute(self.far).copy()
 
@@ -260,6 +265,7 @@ class Blender(BaseDataset):
             lossmult=lossmults,
             near=nears,
             far=fars)
+        print('rays generated done')
         del origins, directions, viewdirs, radii, lossmults, nears, fars, camera_dirs
 
 
