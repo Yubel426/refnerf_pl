@@ -20,6 +20,8 @@ parser.add_argument("--config", help="Path to config file.", required=False, def
 parser.add_argument("opts", nargs=argparse.REMAINDER,
                     help="Modify hparams. Example: train.py resume out_dir TRAIN.BATCH_SIZE 2")
 
+Debug = False
+
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -58,7 +60,8 @@ def main(hparams):
         benchmark=True,
         profiler="simple" if hparams['num_gpus'] == 1 else None,
         strategy=DDPPlugin(find_unused_parameters=False) if hparams['num_gpus'] > 1 else None,
-        limit_val_batches=hparams['val.sample_num']
+        limit_val_batches=hparams['val.sample_num'],
+        fast_dev_run=Debug,
     )
 
     trainer.fit(system, ckpt_path=hparams['checkpoint.resume_path'])
