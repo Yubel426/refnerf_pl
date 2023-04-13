@@ -286,15 +286,15 @@ class RealData360(BaseDataset):
         imgdir = path.join(self.data_dir, 'images' + imgdir_suffix)
         if not path.exists(imgdir):
             raise ValueError('Image folder {} does not exist.'.format(imgdir))
-        imgfiles = [
+        img_files = [
             path.join(imgdir, f)
             for f in sorted(os.listdir(imgdir))
             if f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')
         ]
         images = []
-        for imgfile in imgfiles:
-            with open(imgfile, 'rb') as imgin:
-                image = np.array(Image.open(imgin), dtype=np.float32) / 255.
+        for img_file in img_files:
+            with open(img_file, 'rb') as img_in:
+                image = np.array(Image.open(img_in), dtype=np.float32) / 255.
                 images.append(image)
         images = np.stack(images, axis=-1)
 
@@ -312,17 +312,18 @@ class RealData360(BaseDataset):
         poses[2, 4, :] = poses[2, 4, :] * 1. / self.factor
 
         # Correct rotation matrix ordering and move variable dim to axis 0.
-        poses = np.concatenate(
-            [poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
+        poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
         poses = np.moveaxis(poses, -1, 0).astype(np.float32)
         images = np.moveaxis(images, -1, 0)
         bds = np.moveaxis(bds, -1, 0).astype(np.float32)
 
         # Recenter poses.
         poses = self._recenter_poses(poses)
+        # spherify for 360 dataset
         poses = self._spherify_poses(poses)
         # Select the split.
-        i_test = np.arange(images.shape[0])[::8]
+        llffhold = 8
+        i_test = np.arange(images.shape[0])[::llffhold]
         i_train = np.array(
             [i for i in np.arange(int(images.shape[0])) if i not in i_test])
         if self.split == 'train':
@@ -445,6 +446,7 @@ class RealData360(BaseDataset):
         return x / np.linalg.norm(x)
 
     def _spherify_poses(self, poses):
+        # https://zhuanlan.zhihu.com/p/593204605/
         p34_to_44 = lambda p: np.concatenate([
             p,
             np.tile(np.reshape(np.eye(4)[-1, :], [1, 1, 4]), [p.shape[0], 1, 1])
@@ -479,6 +481,7 @@ class RealData360(BaseDataset):
 def contract(x):
     # return x
     return (2 - 1/torch.norm(x, dim=-1, keepdim=True)) * x/torch.norm(x, dim=-1, keepdim=True)
+
 
 if __name__ == '__main__':
     # realdata360 = RealData360('/media/hjx/dataset/360_v2/garden', split='val', batch_type='single_image', factor=8)
